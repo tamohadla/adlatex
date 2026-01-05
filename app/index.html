@@ -36,53 +36,55 @@
     </div>
   </div>
 
-  <script type="module">
-    import { supabase, BASE_PATH } from "../shared/supabaseClient.js";
+<script type="module">
+  const err = document.getElementById("err");
+  const btn = document.getElementById("btnLogin");
+  const email = document.getElementById("email");
+  const password = document.getElementById("password");
 
+  // 1) اختبار سريع للتفاعل (لا يعتمد على Supabase)
+  btn.addEventListener("click", () => {
+    // لو هذه لا تعمل، المشكلة ليست Supabase بل تحميل JS أصلاً
+    err.textContent = ""; 
+  });
 
-    // 1) تأكد أن هناك Session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      window.location.href = BASE_PATH + "/auth/login.html";
+  // 2) تحميل SupabaseClient بطريقة تُظهر الخطأ داخل الصفحة
+  let supabase, BASE_PATH;
+  try {
+    const mod = await import("../shared/supabaseClient.js");
+    supabase = mod.supabase;
+    BASE_PATH = mod.BASE_PATH || "/adlatex";
+  } catch (e) {
+    err.textContent =
+      "خطأ في تحميل shared/supabaseClient.js\n" +
+      "تأكد من:\n" +
+      "1) اسم المجلد shared بالحروف الصغيرة\n" +
+      "2) اسم الملف supabaseClient.js بحرف C كبير\n" +
+      "3) أن الملف موجود فعلاً هنا: /adlatex/shared/supabaseClient.js\n\n" +
+      "تفاصيل الخطأ:\n" + (e?.message || String(e));
+    throw e; // لإيقاف باقي الكود
+  }
 
+  // 3) تسجيل الدخول
+  btn.addEventListener("click", async () => {
+    err.textContent = "";
+    btn.disabled = true;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.value.trim(),
+        password: password.value
+      });
+      if (error) throw error;
+
+      window.location.href = (BASE_PATH || "/adlatex") + "/app/index.html";
+    } catch (e) {
+      err.textContent = e?.message || String(e);
+    } finally {
+      btn.disabled = false;
     }
+  });
+</script>
 
-    // 2) عرض البريد
-    document.getElementById("who").textContent = session?.user?.email || "";
-
-    // 3) جلب profile
-    const { data: prof, error: profErr } = await supabase
-      .from("profiles")
-      .select("username, display_name, base_role")
-      .eq("user_id", session.user.id)
-      .single();
-
-    const profileDiv = document.getElementById("profile");
-    if (profErr) {
-      profileDiv.textContent = "لم يتم العثور على ملف المستخدم داخل النظام.";
-    } else {
-      profileDiv.textContent = `${prof.display_name || prof.username} — الدور: ${prof.base_role}`;
-    }
-
-    // 4) جلب الصفحات (مؤقتًا: نعرض yarn_purchases فقط)
-    const pagesUl = document.getElementById("pages");
-    pagesUl.innerHTML = `
-  <li><a id="linkYarnForm" href="#">مشتريات الخيط (صفحة الإدخال)</a></li>
-  <li><a id="linkYarnTable" href="#">مشتريات الخيط (الجدول)</a></li>
-`;
-
-document.getElementById("linkYarnForm").href = BASE_PATH + "/yarn/yarn-purchases.html";
-document.getElementById("linkYarnTable").href = BASE_PATH + "/yarn/yarn-purchases-table.html";
-
-
-    // 5) Logout
-    document.getElementById("btnLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-     window.location.href = BASE_PATH + "/auth/login.html";
-
-
-    });
-  </script>
 
 </body>
 </html>
