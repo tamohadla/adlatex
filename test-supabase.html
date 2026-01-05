@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>اختبار Supabase</title>
+  <style>
+    body{font-family:system-ui;margin:30px}
+    pre{background:#f3f3f3;padding:12px;border-radius:10px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h3>اختبار الاتصال بـ Supabase</h3>
+  <pre id="out">جارٍ الاختبار...</pre>
+
+  <script type="module">
+    import { supabase } from "./shared/supabaseClient.js";
+
+    const out = document.getElementById("out");
+    try {
+      const { data, error } = await supabase.from("pages").select("slug,title_ar").limit(5);
+      if (error) throw error;
+      out.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      out.textContent = "ERROR:\n" + (e?.message || String(e));
+    }
+  </script>
+</body>
+</html>
