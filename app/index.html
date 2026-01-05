@@ -12,6 +12,7 @@
     .btn{padding:8px 12px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer}
     .muted{color:#666}
     ul{margin:10px 0 0;padding:0 18px}
+    a{color:#0b57d0;text-decoration:none}
   </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
     <div><b>ADLATEX</b> <span class="muted">| لوحة التحكم</span></div>
     <div style="display:flex;gap:10px;align-items:center">
       <span id="who" class="muted"></span>
-      <button id="btnLogout" class="btn">تسجيل الخروج</button>
+      <button id="btnLogout" class="btn" type="button">تسجيل الخروج</button>
     </div>
   </div>
 
@@ -32,59 +33,56 @@
       <hr style="border:none;border-top:1px solid #eee;margin:14px 0">
 
       <h4 style="margin:0 0 8px">الصفحات المتاحة</h4>
-      <ul id="pages"></ul>
+      <ul id="pages">
+        <li><span class="muted">سيتم ملؤها حسب الصلاحيات لاحقاً.</span></li>
+      </ul>
     </div>
   </div>
 
-<script type="module">
-  const err = document.getElementById("err");
-  const btn = document.getElementById("btnLogin");
-  const email = document.getElementById("email");
-  const password = document.getElementById("password");
-
-  // 1) اختبار سريع للتفاعل (لا يعتمد على Supabase)
-  btn.addEventListener("click", () => {
-    // لو هذه لا تعمل، المشكلة ليست Supabase بل تحميل JS أصلاً
-    err.textContent = ""; 
-  });
-
-  // 2) تحميل SupabaseClient بطريقة تُظهر الخطأ داخل الصفحة
-  let supabase, BASE_PATH;
-  try {
-    const mod = await import("../shared/supabaseClient.js");
-    supabase = mod.supabase;
-    BASE_PATH = mod.BASE_PATH || "/adlatex";
-  } catch (e) {
-    err.textContent =
-      "خطأ في تحميل shared/supabaseClient.js\n" +
-      "تأكد من:\n" +
-      "1) اسم المجلد shared بالحروف الصغيرة\n" +
-      "2) اسم الملف supabaseClient.js بحرف C كبير\n" +
-      "3) أن الملف موجود فعلاً هنا: /adlatex/shared/supabaseClient.js\n\n" +
-      "تفاصيل الخطأ:\n" + (e?.message || String(e));
-    throw e; // لإيقاف باقي الكود
-  }
-
-  // 3) تسجيل الدخول
-  btn.addEventListener("click", async () => {
-    err.textContent = "";
-    btn.disabled = true;
+  <script type="module">
+    let supabase;
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.value.trim(),
-        password: password.value
-      });
-      if (error) throw error;
-
-      window.location.href = (BASE_PATH || "/adlatex") + "/app/index.html";
+      ({ supabase } = await import("../shared/supabaseClient.js"));
     } catch (e) {
-      err.textContent = e?.message || String(e);
-    } finally {
-      btn.disabled = false;
+      document.getElementById("profile").textContent = "فشل تحميل Supabase Client: " + (e?.message || String(e));
+      throw e;
     }
-  });
-</script>
 
+    // تأكد من وجود Session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = "../auth/login.html";
+    }
+
+    document.getElementById("who").textContent = session?.user?.email || "";
+
+    // جلب profile
+    const { data: prof, error: profErr } = await supabase
+      .from("profiles")
+      .select("username, display_name, base_role")
+      .eq("user_id", session.user.id)
+      .single();
+
+    const profileDiv = document.getElementById("profile");
+    if (profErr) {
+      profileDiv.textContent = "لم يتم العثور على ملف المستخدم داخل النظام. (profiles)";
+    } else {
+      profileDiv.textContent = `${prof.display_name || prof.username} — الدور: ${prof.base_role}`;
+    }
+
+    // مؤقتًا: روابط ثابتة (سنربطها بالصلاحيات لاحقًا)
+    const pagesUl = document.getElementById("pages");
+    pagesUl.innerHTML = `
+      <li><a href="../yarn/yarn-purchases.html">مشتريات الخيط (صفحة الإدخال)</a></li>
+      <li><a href="../yarn/yarn-purchases-table.html">مشتريات الخيط (الجدول)</a></li>
+    `;
+
+    // Logout
+    document.getElementById("btnLogout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "../auth/login.html";
+    });
+  </script>
 
 </body>
 </html>
