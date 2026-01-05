@@ -3,15 +3,208 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>مشتريات الخيط - جدول</title>
+  <title>مشتريات الخيط - الجدول</title>
   <style>
-    body{font-family:system-ui;margin:20px}
-    a{color:#0b57d0;text-decoration:none}
+    body{font-family:system-ui;margin:0;background:#f6f6f6}
+    .top{height:56px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0}
+    .wrap{max-width:1200px;margin:18px auto;padding:0 14px}
+    .card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:right;vertical-align:top}
+    th{background:#fafafa;position:sticky;top:56px;z-index:1}
+    .btn{padding:6px 10px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer}
+    .btnPrimary{border-color:#222;background:#222;color:#fff}
+    .muted{color:#666}
+    .err{color:#b00020;white-space:pre-wrap;margin-top:10px}
+    .ok{color:#0b6b2e;white-space:pre-wrap;margin-top:10px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #ddd;font-size:12px}
   </style>
 </head>
 <body>
-  <h3>مشتريات الخيط - جدول البنود</h3>
-  <div>هذه صفحة Placeholder. سنبنيها لاحقًا.</div>
-  <p><a href="../app/index.html">رجوع للوحة التحكم</a></p>
+
+  <div class="top">
+    <div><b>ADLATEX</b> <span class="muted">| مشتريات الخيط (الجدول)</span></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a class="btn" href="../app/index.html">العودة للوحة التحكم</a>
+      <button id="btnLogout" class="btn">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="muted" id="who"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 12px">
+        <button class="btn" id="btnReload">تحديث</button>
+        <span class="pill" id="countInfo"></span>
+      </div>
+
+      <div style="overflow:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>المصدر</th>
+              <th>الحالة</th>
+              <th>تاريخ</th>
+              <th>رقم الأذن</th>
+              <th>المورد</th>
+              <th>المصنع</th>
+              <th>نوع</th>
+              <th>ماركة</th>
+              <th>لوط</th>
+              <th>كمية</th>
+              <th>سعر</th>
+              <th>إجمالي</th>
+              <th>أزرار</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div id="ok" class="ok"></div>
+      <div id="err" class="err"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "../shared/supabaseClient.js";
+
+    const rowsEl = document.getElementById("rows");
+    const errEl = document.getElementById("err");
+    const okEl  = document.getElementById("ok");
+    const whoEl = document.getElementById("who");
+    const countInfo = document.getElementById("countInfo");
+
+    // Auth guard
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) window.location.href = "../auth/login.html";
+
+    document.getElementById("btnLogout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "../auth/login.html";
+    });
+
+    // Load profile to know if manager
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("display_name, username, base_role")
+      .eq("user_id", session.user.id)
+      .single();
+
+    const isManager = (prof?.base_role === "manager");
+    whoEl.textContent = `المستخدم: ${(prof?.display_name || prof?.username || "")} — الدور: ${prof?.base_role || ""}`;
+
+    // Caches for names
+    async function loadNameMaps() {
+      const [sup, fac, yt, yb] = await Promise.all([
+        supabase.from("suppliers").select("id,name"),
+        supabase.from("factories").select("id,name"),
+        supabase.from("yarn_types").select("id,name"),
+        supabase.from("yarn_brands").select("id,name")
+      ]);
+      if (sup.error) throw sup.error;
+      if (fac.error) throw fac.error;
+      if (yt.error) throw yt.error;
+      if (yb.error) throw yb.error;
+
+      return {
+        suppliers: Object.fromEntries((sup.data||[]).map(x=>[x.id,x.name])),
+        factories: Object.fromEntries((fac.data||[]).map(x=>[x.id,x.name])),
+        yarnTypes: Object.fromEntries((yt.data||[]).map(x=>[x.id,x.name])),
+        yarnBrands:Object.fromEntries((yb.data||[]).map(x=>[x.id,x.name])),
+      };
+    }
+
+    let maps = await loadNameMaps();
+
+    function esc(s){return (s??"").toString().replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
+
+    async function loadRows() {
+      errEl.textContent = "";
+      okEl.textContent = "";
+      rowsEl.innerHTML = "";
+      countInfo.textContent = "جارٍ التحميل...";
+
+      const { data, error } = await supabase
+        .from("v_yarn_purchase_items_table")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (error) {
+        errEl.textContent = error.message;
+        countInfo.textContent = "فشل التحميل";
+        return;
+      }
+
+      const pendingCount = data.filter(r => r.source === "pending").length;
+      const approvedCount = data.filter(r => r.source === "approved").length;
+      countInfo.textContent = `Pending: ${pendingCount} | Approved: ${approvedCount}`;
+
+      for (const r of data) {
+        const supplierName = maps.suppliers[r.supplier_id] || r.supplier_id;
+        const factoryName  = maps.factories[r.factory_id] || r.factory_id;
+        const ytName       = maps.yarnTypes[r.yarn_type_id] || r.yarn_type_id;
+        const ybName       = maps.yarnBrands[r.yarn_brand_id] || r.yarn_brand_id;
+
+        const canApprove = isManager && r.source === "pending" && r.change_request_id;
+        const approveBtn = canApprove
+          ? `<button class="btn btnPrimary" data-approve="${r.change_request_id}">اعتماد</button>`
+          : "";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${esc(r.source)}</td>
+          <td>${esc(r.status)}</td>
+          <td>${esc(r.supplier_note_date)}</td>
+          <td>${esc(r.supplier_note_no || "")}</td>
+          <td>${esc(supplierName)}</td>
+          <td>${esc(factoryName)}</td>
+          <td>${esc(ytName)}</td>
+          <td>${esc(ybName)}</td>
+          <td>${esc(r.lot_no || "")}</td>
+          <td>${Number(r.qty || 0).toFixed(3)}</td>
+          <td>${(r.price == null) ? "" : Number(r.price).toFixed(3)}</td>
+          <td>${(r.line_total == null) ? "" : Number(r.line_total).toFixed(3)}</td>
+          <td>${approveBtn}</td>
+        `;
+        rowsEl.appendChild(tr);
+      }
+
+      // bind approve buttons
+      rowsEl.querySelectorAll("button[data-approve]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const crId = btn.getAttribute("data-approve");
+          if (!crId) return;
+          if (!confirm("تأكيد اعتماد الطلب؟")) return;
+
+          errEl.textContent = "";
+          okEl.textContent = "";
+          btn.disabled = true;
+
+          try {
+            const { error } = await supabase.rpc("approve_change_request", { p_cr_id: crId });
+            if (error) throw error;
+
+            okEl.textContent = "تم اعتماد الطلب: " + crId;
+            await loadRows();
+          } catch (e) {
+            errEl.textContent = e?.message || String(e);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    }
+
+    document.getElementById("btnReload").addEventListener("click", async () => {
+      maps = await loadNameMaps();
+      await loadRows();
+    });
+
+    await loadRows();
+  </script>
+
 </body>
 </html>
