@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>لوحة التحكم</title>
+  <style>
+    body{font-family:system-ui;margin:0;background:#f6f6f6}
+    .top{height:56px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0}
+    .wrap{max-width:1100px;margin:20px auto;padding:0 14px}
+    .card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:16px}
+    .btn{padding:8px 12px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer}
+    .muted{color:#666}
+    ul{margin:10px 0 0;padding:0 18px}
+  </style>
+</head>
+<body>
+
+  <div class="top">
+    <div><b>ADLATEX</b> <span class="muted">| لوحة التحكم</span></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span id="who" class="muted"></span>
+      <button id="btnLogout" class="btn">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h3 style="margin:0 0 10px">مرحباً</h3>
+      <div id="profile" class="muted">جاري التحميل...</div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:14px 0">
+
+      <h4 style="margin:0 0 8px">الصفحات المتاحة</h4>
+      <ul id="pages"></ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "../shared/supabaseClient.js";
+
+    // 1) تأكد أن هناك Session
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = "/auth/login.html";
+    }
+
+    // 2) عرض البريد
+    document.getElementById("who").textContent = session?.user?.email || "";
+
+    // 3) جلب profile
+    const { data: prof, error: profErr } = await supabase
+      .from("profiles")
+      .select("username, display_name, base_role")
+      .eq("user_id", session.user.id)
+      .single();
+
+    const profileDiv = document.getElementById("profile");
+    if (profErr) {
+      profileDiv.textContent = "لم يتم العثور على ملف المستخدم داخل النظام.";
+    } else {
+      profileDiv.textContent = `${prof.display_name || prof.username} — الدور: ${prof.base_role}`;
+    }
+
+    // 4) جلب الصفحات (مؤقتًا: نعرض yarn_purchases فقط)
+    const pagesUl = document.getElementById("pages");
+    pagesUl.innerHTML = `
+      <li><a href="/yarn/yarn-purchases.html">مشتريات الخيط (صفحة الإدخال)</a></li>
+      <li><a href="/yarn/yarn-purchases-table.html">مشتريات الخيط (الجدول)</a></li>
+    `;
+
+    // 5) Logout
+    document.getElementById("btnLogout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "/auth/login.html";
+    });
+  </script>
+
+</body>
+</html>
