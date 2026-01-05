@@ -49,7 +49,10 @@
         if (error) throw error;
 
         // نجاح: نذهب للوحة التحكم (سننشئها بالخطوة القادمة)
-        window.location.href = "/app/index.html";
+       import { supabase, BASE_PATH } from "../shared/supabaseClient.js";
+...
+window.location.href = BASE_PATH + "/app/index.html";
+
       } catch (e) {
         err.textContent = e?.message || String(e);
       } finally {
