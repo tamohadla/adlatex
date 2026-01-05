@@ -37,12 +37,14 @@
   </div>
 
   <script type="module">
-    import { supabase } from "../shared/supabaseClient.js";
+    import { supabase, BASE_PATH } from "../shared/supabaseClient.js";
+
 
     // 1) تأكد أن هناك Session
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      window.location.href = "/auth/login.html";
+      window.location.href = BASE_PATH + "/auth/login.html";
+
     }
 
     // 2) عرض البريد
@@ -65,14 +67,20 @@
     // 4) جلب الصفحات (مؤقتًا: نعرض yarn_purchases فقط)
     const pagesUl = document.getElementById("pages");
     pagesUl.innerHTML = `
-      <li><a href="/yarn/yarn-purchases.html">مشتريات الخيط (صفحة الإدخال)</a></li>
-      <li><a href="/yarn/yarn-purchases-table.html">مشتريات الخيط (الجدول)</a></li>
-    `;
+  <li><a id="linkYarnForm" href="#">مشتريات الخيط (صفحة الإدخال)</a></li>
+  <li><a id="linkYarnTable" href="#">مشتريات الخيط (الجدول)</a></li>
+`;
+
+document.getElementById("linkYarnForm").href = BASE_PATH + "/yarn/yarn-purchases.html";
+document.getElementById("linkYarnTable").href = BASE_PATH + "/yarn/yarn-purchases-table.html";
+
 
     // 5) Logout
     document.getElementById("btnLogout").addEventListener("click", async () => {
       await supabase.auth.signOut();
-      window.location.href = "/auth/login.html";
+     window.location.href = BASE_PATH + "/auth/login.html";
+
+
     });
   </script>
 
