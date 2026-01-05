@@ -5,13 +5,353 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>مشتريات الخيط - إدخال</title>
   <style>
-    body{font-family:system-ui;margin:20px}
-    a{color:#0b57d0;text-decoration:none}
+    body{font-family:system-ui;margin:0;background:#f6f6f6}
+    .top{height:56px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0}
+    .wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+    .card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:16px}
+    label{display:block;margin:10px 0 6px}
+    input,select{width:100%;padding:10px;border:1px solid #ccc;border-radius:10px;background:#fff}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .btn{padding:10px 12px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer}
+    .btnPrimary{border-color:#222;background:#222;color:#fff}
+    .muted{color:#666}
+    .err{color:#b00020;white-space:pre-wrap;margin-top:10px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #eee;padding:10px;text-align:right}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
   </style>
 </head>
 <body>
-  <h3>مشتريات الخيط - صفحة الإدخال</h3>
-  <div>هذه صفحة Placeholder. سنبنيها لاحقًا.</div>
-  <p><a href="../app/index.html">رجوع للوحة التحكم</a></p>
+
+  <div class="top">
+    <div><b>ADLATEX</b> <span class="muted">| مشتريات الخيط (إدخال)</span></div>
+    <div class="actions">
+      <a class="btn" href="../app/index.html">العودة للوحة التحكم</a>
+      <button id="btnLogout" class="btn">تسجيل الخروج</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <h3 style="margin:0 0 10px">بيانات الأذن</h3>
+
+      <div class="row">
+        <div>
+          <label>رقم رسالة المورد (اختياري)</label>
+          <input id="supplier_note_no" placeholder="مثال: 12345">
+        </div>
+        <div>
+          <label>تاريخ رسالة المورد</label>
+          <input id="supplier_note_date" type="date">
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label>اسم المورد</label>
+          <select id="supplier_id"></select>
+        </div>
+        <div>
+          <label>اسم المصنع المستلم</label>
+          <select id="factory_id"></select>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #eee;margin:14px 0">
+
+      <h3 style="margin:0 0 10px">بنود الأذن (Item-level)</h3>
+
+      <div class="row3">
+        <div>
+          <label>نوع الغزل</label>
+          <select id="yarn_type_id"></select>
+        </div>
+        <div>
+          <label>ماركة الغزل</label>
+          <select id="yarn_brand_id"></select>
+        </div>
+        <div>
+          <label>رقم اللوط (اختياري)</label>
+          <input id="lot_no" placeholder="مثال: L-1">
+        </div>
+      </div>
+
+      <div class="row3">
+        <div>
+          <label>الكمية</label>
+          <input id="qty" inputmode="decimal" placeholder="مثال: 100">
+        </div>
+        <div>
+          <label>السعر (اختياري)</label>
+          <input id="price" inputmode="decimal" placeholder="مثال: 12.5">
+        </div>
+        <div>
+          <label>الإجمالي</label>
+          <input id="line_total" disabled>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:12px">
+        <button id="btnAddItem" class="btn">إضافة البند للجدول</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>نوع</th>
+            <th>ماركة</th>
+            <th>لوط</th>
+            <th>كمية</th>
+            <th>سعر</th>
+            <th>إجمالي</th>
+            <th>حذف</th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+
+      <div class="actions" style="margin-top:14px">
+        <button id="btnSubmit" class="btn btnPrimary">إرسال الطلب للمراجعة</button>
+      </div>
+
+      <div id="msg" class="muted" style="margin-top:10px"></div>
+      <div id="err" class="err"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase } from "../shared/supabaseClient.js";
+
+    const err = document.getElementById("err");
+    const msg = document.getElementById("msg");
+
+    // Auth guard
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) window.location.href = "../auth/login.html";
+
+    document.getElementById("btnLogout").addEventListener("click", async () => {
+      await supabase.auth.signOut();
+      window.location.href = "../auth/login.html";
+    });
+
+    // Helpers
+    const arabicToEnglishDigits = (s) => (s || "")
+      .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+
+    const parseNumber = (s) => {
+      const v = arabicToEnglishDigits((s || "").trim());
+      if (!v) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // Set default date
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth()+1).padStart(2,"0");
+    const dd = String(today.getDate()).padStart(2,"0");
+    document.getElementById("supplier_note_date").value = `${yyyy}-${mm}-${dd}`;
+
+    // Load dropdown data
+    async function loadMasters() {
+      const [sup, fac, yt] = await Promise.all([
+        supabase.from("suppliers").select("id,name").eq("is_active", true).order("name"),
+        supabase.from("factories").select("id,name").eq("is_active", true).order("name"),
+        supabase.from("yarn_types").select("id,name").eq("is_active", true).order("name"),
+      ]);
+
+      if (sup.error) throw sup.error;
+      if (fac.error) throw fac.error;
+      if (yt.error) throw yt.error;
+
+      fillSelect("supplier_id", sup.data, "اختر المورد");
+      fillSelect("factory_id", fac.data, "اختر المصنع");
+      fillSelect("yarn_type_id", yt.data, "اختر نوع الغزل");
+
+      await refreshBrands();
+    }
+
+    function fillSelect(id, rows, placeholder) {
+      const sel = document.getElementById(id);
+      sel.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = placeholder;
+      sel.appendChild(opt0);
+
+      for (const r of rows) {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = r.name;
+        sel.appendChild(opt);
+      }
+    }
+
+    async function refreshBrands() {
+      const yarnTypeId = document.getElementById("yarn_type_id").value;
+      const brandSel = document.getElementById("yarn_brand_id");
+
+      brandSel.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = yarnTypeId ? "اختر الماركة" : "اختر نوع الغزل أولاً";
+      brandSel.appendChild(opt0);
+
+      if (!yarnTypeId) return;
+
+      const { data, error } = await supabase
+        .from("yarn_brands")
+        .select("id,name")
+        .eq("is_active", true)
+        .eq("yarn_type_id", yarnTypeId)
+        .order("name");
+
+      if (error) throw error;
+
+      for (const r of data) {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = r.name;
+        brandSel.appendChild(opt);
+      }
+    }
+
+    document.getElementById("yarn_type_id").addEventListener("change", refreshBrands);
+
+    // Line total calc
+    const qtyEl = document.getElementById("qty");
+    const priceEl = document.getElementById("price");
+    const totalEl = document.getElementById("line_total");
+
+    function updateTotal() {
+      const q = parseNumber(qtyEl.value);
+      const p = parseNumber(priceEl.value);
+      totalEl.value = (q != null && p != null) ? (q * p).toFixed(3) : "";
+    }
+    qtyEl.addEventListener("input", updateTotal);
+    priceEl.addEventListener("input", updateTotal);
+
+    // Items table
+    const items = [];
+    const body = document.getElementById("itemsBody");
+
+    function getSelectedText(selId) {
+      const sel = document.getElementById(selId);
+      return sel.options[sel.selectedIndex]?.textContent || "";
+    }
+
+    function renderItems() {
+      body.innerHTML = "";
+      items.forEach((it, idx) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${it.yarn_type_name}</td>
+          <td>${it.yarn_brand_name}</td>
+          <td>${it.lot_no || ""}</td>
+          <td>${it.qty.toFixed(3)}</td>
+          <td>${it.price == null ? "" : it.price.toFixed(3)}</td>
+          <td>${it.line_total == null ? "" : it.line_total.toFixed(3)}</td>
+          <td><button class="btn" data-del="${idx}">حذف</button></td>
+        `;
+        body.appendChild(tr);
+      });
+
+      body.querySelectorAll("button[data-del]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.getAttribute("data-del"));
+          items.splice(i, 1);
+          renderItems();
+        });
+      });
+    }
+
+    document.getElementById("btnAddItem").addEventListener("click", () => {
+      err.textContent = "";
+      msg.textContent = "";
+
+      const yarnTypeId = document.getElementById("yarn_type_id").value;
+      const yarnBrandId = document.getElementById("yarn_brand_id").value;
+      const lot = document.getElementById("lot_no").value.trim();
+      const qty = parseNumber(qtyEl.value);
+      const price = parseNumber(priceEl.value);
+
+      if (!yarnTypeId) return err.textContent = "اختر نوع الغزل.";
+      if (!yarnBrandId) return err.textContent = "اختر ماركة الغزل.";
+      if (qty == null || qty <= 0) return err.textContent = "الكمية غير صحيحة.";
+
+      const line_total = (price == null) ? null : (qty * price);
+
+      items.push({
+        yarn_type_id: yarnTypeId,
+        yarn_brand_id: yarnBrandId,
+        lot_no: lot || null,
+        qty,
+        price: (price == null) ? null : price,
+        line_total,
+        yarn_type_name: getSelectedText("yarn_type_id"),
+        yarn_brand_name: getSelectedText("yarn_brand_id"),
+      });
+
+      // reset line inputs
+      document.getElementById("lot_no").value = "";
+      qtyEl.value = "";
+      priceEl.value = "";
+      totalEl.value = "";
+      renderItems();
+    });
+
+    // Submit via RPC
+    document.getElementById("btnSubmit").addEventListener("click", async () => {
+      err.textContent = "";
+      msg.textContent = "";
+
+      const supplierId = document.getElementById("supplier_id").value;
+      const factoryId = document.getElementById("factory_id").value;
+      const noteNo = document.getElementById("supplier_note_no").value.trim();
+      const noteDate = document.getElementById("supplier_note_date").value;
+
+      if (!supplierId) return err.textContent = "اختر المورد.";
+      if (!factoryId) return err.textContent = "اختر المصنع المستلم.";
+      if (!noteDate) return err.textContent = "تاريخ رسالة المورد مطلوب.";
+      if (items.length === 0) return err.textContent = "أضف بند واحد على الأقل.";
+
+      const payload = {
+        supplier_id: supplierId,
+        factory_id: factoryId,
+        supplier_note_no: noteNo || null,
+        supplier_note_date: noteDate,
+        receipt_image_path: null,
+        items: items.map(i => ({
+          yarn_type_id: i.yarn_type_id,
+          yarn_brand_id: i.yarn_brand_id,
+          lot_no: i.lot_no,
+          qty: i.qty,
+          price: i.price
+        }))
+      };
+
+      try {
+        const { data, error } = await supabase.rpc("submit_yarn_purchase_create", {
+          p_after: payload,
+          p_note: "إدخال من صفحة الويب"
+        });
+        if (error) throw error;
+
+        msg.textContent = "تم إرسال الطلب للمراجعة. رقم الطلب: " + data;
+        items.length = 0;
+        renderItems();
+      } catch (e) {
+        err.textContent = e?.message || String(e);
+      }
+    });
+
+    // Initial load
+    try {
+      await loadMasters();
+    } catch (e) {
+      err.textContent = e?.message || String(e);
+    }
+  </script>
 </body>
 </html>
