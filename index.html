@@ -3,16 +3,24 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ADLATEX - النظام</title>
+  <title>ADLATEX</title>
   <style>
     body{font-family:system-ui;margin:0;background:#f6f6f6}
     .wrap{max-width:900px;margin:60px auto;background:#fff;border:1px solid #ddd;border-radius:12px;padding:20px}
+    a{color:#0b57d0;text-decoration:none}
+    .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+    .btn{display:inline-block;border:1px solid #ccc;border-radius:10px;padding:10px 12px;background:#fff}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h2>ADLATEX</h2>
-    <p>صفحة اختبار GitHub Pages.</p>
+    <h2 style="margin:0 0 6px">ADLATEX</h2>
+    <div>Starter build (GitHub Pages).</div>
+
+    <div class="row">
+      <a class="btn" href="./auth/login.html">تسجيل الدخول</a>
+      <a class="btn" href="./test-supabase.html">اختبار Supabase</a>
+    </div>
   </div>
 </body>
 </html>

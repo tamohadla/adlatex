@@ -7,22 +7,30 @@
   <style>
     body{font-family:system-ui;margin:30px}
     pre{background:#f3f3f3;padding:12px;border-radius:10px;overflow:auto}
+    .ok{color:#0a7a0a}
+    .bad{color:#b00020}
   </style>
 </head>
 <body>
   <h3>اختبار الاتصال بـ Supabase</h3>
-  <pre id="out">جارٍ الاختبار...</pre>
+  <div id="status">جارٍ الاختبار...</div>
+  <pre id="out"></pre>
 
   <script type="module">
-    import { supabase } from "./shared/supabaseClient.js";
-
+    const status = document.getElementById("status");
     const out = document.getElementById("out");
+
     try {
+      const { supabase } = await import("./shared/supabaseClient.js");
       const { data, error } = await supabase.from("pages").select("slug,title_ar").limit(5);
       if (error) throw error;
+      status.className = "ok";
+      status.textContent = "OK";
       out.textContent = JSON.stringify(data, null, 2);
     } catch (e) {
-      out.textContent = "ERROR:\n" + (e?.message || String(e));
+      status.className = "bad";
+      status.textContent = "ERROR";
+      out.textContent = (e?.message || String(e));
     }
   </script>
 </body>
