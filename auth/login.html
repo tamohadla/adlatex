@@ -12,10 +12,12 @@
     button{width:100%;padding:10px;border:0;border-radius:10px;margin-top:14px;cursor:pointer}
     .err{color:#b00020;margin-top:10px;white-space:pre-wrap}
     .hint{color:#666;font-size:13px;margin-top:8px}
+    .badge{display:inline-block;font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #ddd;background:#fafafa;margin-bottom:10px}
   </style>
 </head>
 <body>
   <div class="card">
+    <div class="badge" id="jsStatus">JS: لم يتم التحميل بعد</div>
     <h3 style="margin:0 0 10px">تسجيل الدخول</h3>
 
     <label>البريد الإلكتروني</label>
@@ -24,19 +26,30 @@
     <label>كلمة المرور</label>
     <input id="password" type="password" autocomplete="current-password" />
 
-    <button id="btnLogin">دخول</button>
+    <button id="btnLogin" type="button">دخول</button>
 
     <div class="hint">ملاحظة: لا يوجد تسجيل مستخدم جديد من هنا.</div>
     <div id="err" class="err"></div>
   </div>
 
   <script type="module">
-    import { supabase } from "../shared/supabaseClient.js";
-
+    const jsStatus = document.getElementById("jsStatus");
     const email = document.getElementById("email");
     const password = document.getElementById("password");
     const err = document.getElementById("err");
     const btn = document.getElementById("btnLogin");
+
+    jsStatus.textContent = "JS: تم التحميل";
+    jsStatus.style.borderColor = "#0a7a0a";
+    jsStatus.style.color = "#0a7a0a";
+
+    let supabase;
+    try {
+      ({ supabase } = await import("../shared/supabaseClient.js"));
+    } catch (e) {
+      err.textContent = "فشل تحميل Supabase Client. تحقق من المسار: ../shared/supabaseClient.js\n\n" + (e?.message || String(e));
+      throw e;
+    }
 
     btn.addEventListener("click", async () => {
       err.textContent = "";
@@ -48,11 +61,8 @@
         });
         if (error) throw error;
 
-        // نجاح: نذهب للوحة التحكم (سننشئها بالخطوة القادمة)
-       import { supabase, BASE_PATH } from "../shared/supabaseClient.js";
-...
-window.location.href = BASE_PATH + "/app/index.html";
-
+        // مهم: استخدم مسار نسبي لتجنب مشاكل /adlatex
+        window.location.href = "../app/index.html";
       } catch (e) {
         err.textContent = e?.message || String(e);
       } finally {
