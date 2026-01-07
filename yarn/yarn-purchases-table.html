@@ -2,209 +2,138 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>مشتريات الخيط - الجدول</title>
-  <style>
-    body{font-family:system-ui;margin:0;background:#f6f6f6}
-    .top{height:56px;background:#fff;border-bottom:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;padding:0 14px;position:sticky;top:0}
-    .wrap{max-width:1200px;margin:18px auto;padding:0 14px}
-    .card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:16px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border-bottom:1px solid #eee;padding:10px;text-align:right;vertical-align:top}
-    th{background:#fafafa;position:sticky;top:56px;z-index:1}
-    .btn{padding:6px 10px;border:1px solid #ccc;border-radius:10px;background:#fff;cursor:pointer}
-    .btnPrimary{border-color:#222;background:#222;color:#fff}
-    .muted{color:#666}
-    .err{color:#b00020;white-space:pre-wrap;margin-top:10px}
-    .ok{color:#0b6b2e;white-space:pre-wrap;margin-top:10px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #ddd;font-size:12px}
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>جدول مشتريات الخيط</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./yarn-purchases-table.css" />
 </head>
+
 <body>
+  <div class="page">
 
-  <div class="top">
-    <div><b>ADLATEX</b> <span class="muted">| مشتريات الخيط (الجدول)</span></div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <a class="btn" href="../app/index.html">العودة للوحة التحكم</a>
-      <button id="btnLogout" class="btn">تسجيل الخروج</button>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <div class="card">
-      <div class="muted" id="who"></div>
-
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 12px">
-        <button class="btn" id="btnReload">تحديث</button>
-        <span class="pill" id="countInfo"></span>
+    <header class="topbar">
+      <div>
+        <h1>جدول مشتريات الخيط</h1>
+        <p class="muted">الجدول الأساسي = Item-level (كل بند فعلي = صف).</p>
       </div>
 
-      <div style="overflow:auto">
-        <table>
+      <div class="topbar-actions">
+        <a class="btn" href="../app/index.html">العودة للرئيسية</a>
+        <a class="btn" href="./yarn-purchases.html">إدخال مشتريات</a>
+        <button class="btn primary" id="btnRefresh">تحديث</button>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="filters">
+        <input class="search" id="search" placeholder="بحث: رقم الأذن / اسم المورد / اسم المصنع / نوع / ماركة ..." />
+        <select class="select" id="sourceFilter">
+          <option value="">الكل</option>
+          <option value="approved">المعتمد فقط</option>
+          <option value="pending">قيد المراجعة فقط</option>
+        </select>
+        <select class="select" id="statusFilter">
+          <option value="">كل الحالات</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
           <thead>
             <tr>
-              <th>المصدر</th>
-              <th>الحالة</th>
-              <th>تاريخ</th>
+              <th>التاريخ</th>
               <th>رقم الأذن</th>
               <th>المورد</th>
-              <th>المصنع</th>
-              <th>نوع</th>
-              <th>ماركة</th>
+              <th>مصنع الخام</th>
+
+              <th>نوع الخيط</th>
+              <th>ماركة الخيط</th>
               <th>لوط</th>
               <th>كمية</th>
               <th>سعر</th>
               <th>إجمالي</th>
-              <th>أزرار</th>
+
+              <th>الحالة</th>
+              <th>صورة</th>
+              <th>إجراءات</th>
             </tr>
           </thead>
-          <tbody id="rows"></tbody>
+          <tbody id="tbody"></tbody>
         </table>
       </div>
 
-      <div id="ok" class="ok"></div>
-      <div id="err" class="err"></div>
+      <div class="muted" id="countBox" style="margin-top:10px"></div>
+    </section>
+
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal" id="modalPreview" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-label="معاينة">
+      <div class="modal-head">
+        <h3 id="previewTitle">معاينة</h3>
+        <button class="iconbtn" data-close>×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="grid2">
+          <div class="kv"><span class="muted">الحالة</span><strong id="previewStatus">—</strong></div>
+          <div class="kv"><span class="muted">المصدر</span><strong id="previewSource">—</strong></div>
+          <div class="kv"><span class="muted">رقم الأذن</span><strong id="previewNo">—</strong></div>
+          <div class="kv"><span class="muted">التاريخ</span><strong id="previewDate">—</strong></div>
+          <div class="kv"><span class="muted">المورد</span><strong id="previewSupplier">—</strong></div>
+          <div class="kv"><span class="muted">مصنع الخام</span><strong id="previewFactory">—</strong></div>
+        </div>
+
+        <hr class="sep" />
+
+        <h4 style="margin:0 0 10px 0">بنود الأذن</h4>
+        <div class="table-wrap">
+          <table class="table" style="min-width: 860px">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>نوع</th>
+                <th>ماركة</th>
+                <th>لوط</th>
+                <th>كمية</th>
+                <th>سعر</th>
+                <th>إجمالي</th>
+              </tr>
+            </thead>
+            <tbody id="previewItems"></tbody>
+          </table>
+        </div>
+
+        <div class="totals" style="margin-top:12px">
+          <div class="totals-row">
+            <span class="muted">إجمالي الأذن</span>
+            <strong id="previewGrand">0</strong>
+          </div>
+        </div>
+
+        <hr class="sep" />
+
+        <h4 style="margin:0 0 10px 0">صورة الأذن</h4>
+        <div class="image-box">
+          <img id="previewImg" alt="صورة الأذن" />
+          <div id="previewNoImg" class="muted">لا توجد صورة أو غير متاحة.</div>
+        </div>
+
+        <div id="previewMsg" class="muted" style="margin-top:10px"></div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn" data-close>إغلاق</button>
+        <button class="btn primary" id="btnApprove">اعتماد (للمدير)</button>
+      </div>
     </div>
   </div>
 
-  <script type="module">
-    import { supabase } from "../shared/supabaseClient.js";
-
-    const rowsEl = document.getElementById("rows");
-    const errEl = document.getElementById("err");
-    const okEl  = document.getElementById("ok");
-    const whoEl = document.getElementById("who");
-    const countInfo = document.getElementById("countInfo");
-
-    // Auth guard
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) window.location.href = "../auth/login.html";
-
-    document.getElementById("btnLogout").addEventListener("click", async () => {
-      await supabase.auth.signOut();
-      window.location.href = "../auth/login.html";
-    });
-
-    // Load profile to know if manager
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("display_name, username, base_role")
-      .eq("user_id", session.user.id)
-      .single();
-
-    const isManager = (prof?.base_role === "manager");
-    whoEl.textContent = `المستخدم: ${(prof?.display_name || prof?.username || "")} — الدور: ${prof?.base_role || ""}`;
-
-    // Caches for names
-    async function loadNameMaps() {
-      const [sup, fac, yt, yb] = await Promise.all([
-        supabase.from("suppliers").select("id,name"),
-        supabase.from("factories").select("id,name"),
-        supabase.from("yarn_types").select("id,name"),
-        supabase.from("yarn_brands").select("id,name")
-      ]);
-      if (sup.error) throw sup.error;
-      if (fac.error) throw fac.error;
-      if (yt.error) throw yt.error;
-      if (yb.error) throw yb.error;
-
-      return {
-        suppliers: Object.fromEntries((sup.data||[]).map(x=>[x.id,x.name])),
-        factories: Object.fromEntries((fac.data||[]).map(x=>[x.id,x.name])),
-        yarnTypes: Object.fromEntries((yt.data||[]).map(x=>[x.id,x.name])),
-        yarnBrands:Object.fromEntries((yb.data||[]).map(x=>[x.id,x.name])),
-      };
-    }
-
-    let maps = await loadNameMaps();
-
-    function esc(s){return (s??"").toString().replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));}
-
-    async function loadRows() {
-      errEl.textContent = "";
-      okEl.textContent = "";
-      rowsEl.innerHTML = "";
-      countInfo.textContent = "جارٍ التحميل...";
-
-      const { data, error } = await supabase
-        .from("v_yarn_purchase_items_table")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-
-      if (error) {
-        errEl.textContent = error.message;
-        countInfo.textContent = "فشل التحميل";
-        return;
-      }
-
-      const pendingCount = data.filter(r => r.source === "pending").length;
-      const approvedCount = data.filter(r => r.source === "approved").length;
-      countInfo.textContent = `Pending: ${pendingCount} | Approved: ${approvedCount}`;
-
-      for (const r of data) {
-        const supplierName = maps.suppliers[r.supplier_id] || r.supplier_id;
-        const factoryName  = maps.factories[r.factory_id] || r.factory_id;
-        const ytName       = maps.yarnTypes[r.yarn_type_id] || r.yarn_type_id;
-        const ybName       = maps.yarnBrands[r.yarn_brand_id] || r.yarn_brand_id;
-
-        const canApprove = isManager && r.source === "pending" && r.change_request_id;
-        const approveBtn = canApprove
-          ? `<button class="btn btnPrimary" data-approve="${r.change_request_id}">اعتماد</button>`
-          : "";
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${esc(r.source)}</td>
-          <td>${esc(r.status)}</td>
-          <td>${esc(r.supplier_note_date)}</td>
-          <td>${esc(r.supplier_note_no || "")}</td>
-          <td>${esc(supplierName)}</td>
-          <td>${esc(factoryName)}</td>
-          <td>${esc(ytName)}</td>
-          <td>${esc(ybName)}</td>
-          <td>${esc(r.lot_no || "")}</td>
-          <td>${Number(r.qty || 0).toFixed(3)}</td>
-          <td>${(r.price == null) ? "" : Number(r.price).toFixed(3)}</td>
-          <td>${(r.line_total == null) ? "" : Number(r.line_total).toFixed(3)}</td>
-          <td>${approveBtn}</td>
-        `;
-        rowsEl.appendChild(tr);
-      }
-
-      // bind approve buttons
-      rowsEl.querySelectorAll("button[data-approve]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          const crId = btn.getAttribute("data-approve");
-          if (!crId) return;
-          if (!confirm("تأكيد اعتماد الطلب؟")) return;
-
-          errEl.textContent = "";
-          okEl.textContent = "";
-          btn.disabled = true;
-
-          try {
-            const { error } = await supabase.rpc("approve_change_request", { p_cr_id: crId });
-            if (error) throw error;
-
-            okEl.textContent = "تم اعتماد الطلب: " + crId;
-            await loadRows();
-          } catch (e) {
-            errEl.textContent = e?.message || String(e);
-          } finally {
-            btn.disabled = false;
-          }
-        });
-      });
-    }
-
-    document.getElementById("btnReload").addEventListener("click", async () => {
-      maps = await loadNameMaps();
-      await loadRows();
-    });
-
-    await loadRows();
-  </script>
-
+  <script type="module" src="./yarn-purchases-table.js"></script>
 </body>
 </html>
