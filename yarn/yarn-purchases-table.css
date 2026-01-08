@@ -362,3 +362,36 @@ p{ margin:0; }
   border-radius: 12px;
   background:#fff;
 }
+
+
+/* ====== V2 additions ====== */
+.btn.danger, .btn.danger:hover { background: #b42318; border-color: #b42318; color: #fff; }
+
+.receipt-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.modal-card{
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+}
+.modal-body{
+  overflow: auto;
+  max-height: calc(100vh - 180px);
+}
+
+.modal-wide{
+  width: min(1100px, calc(100vw - 24px));
+}
+
+.actions-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.badge.warn{ border-color: rgba(245, 158, 11, .55); background: rgba(245, 158, 11, .10); color: #fcd34d; }
+.badge.ok{ border-color: rgba(16, 185, 129, .55); background: rgba(16, 185, 129, .10); color: #a7f3d0; }
+.badge.danger{ border-color: rgba(180, 35, 24, .55); background: rgba(180, 35, 24, .12); color: #fecaca; }

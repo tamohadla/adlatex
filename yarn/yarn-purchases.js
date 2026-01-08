@@ -1005,6 +1005,7 @@ $("#saveYarnBrand").addEventListener("click", async () => {
 /* ====== Init ====== */
 (async function init() {
   await requireSession();
+  await loadIsManager();
   elSupplierNoteDate.value = todayISO();
   try {
     await loadMasters();
@@ -1012,4 +1013,13 @@ $("#saveYarnBrand").addEventListener("click", async () => {
   } catch (e) {
     showStatus("تعذر تحميل القوائم من قاعدة البيانات: " + (e?.message || e), "err");
   }
-})();
+})();let isManager = false;
+
+async function loadIsManager() {
+  try {
+    const r = await supabase.rpc('is_manager');
+    if (!r.error && typeof r.data === 'boolean') isManager = r.data;
+  } catch (_) {}
+}
+
+
