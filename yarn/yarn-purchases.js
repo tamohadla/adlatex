@@ -5,6 +5,8 @@
 
 import { supabase } from "../shared/supabaseClient.js";
 
+let isManager = false;
+
 /* ====== Config (عدلها إذا لزم) ====== */
 const LOGIN_URL = "../index.html";           // صفحة تسجيل الدخول (إذا لا يوجد Session)
 const RECEIPT_BUCKET = "receipts";           // Supabase Storage bucket
@@ -21,9 +23,6 @@ const T = {
 // أسماء الـ RPC (نحاول أكثر من اسم لتقليل الأخطاء)
 const RPC_CREATE_CANDIDATES = [
   "submit_yarn_purchase_request",
-  "submit_yarn_purchase_change_request",
-  "submit_yarn_purchase_create_request",
-  "request_yarn_purchase",
 ];
 
 /* ====== Helpers ====== */
@@ -528,7 +527,6 @@ async function callAnyRpcWithArgVariants(candidates, argVariants) {
   let last = null;
   for (const args of argVariants) {
     const res = await callAnyRpc(candidates, args);
-    if (!res?.error) return res;
     last = res;
     // if error is "function does not exist" keep trying other args because it might exist but args mismatch
     // otherwise: keep going anyway; we'll show last error at end.
@@ -556,23 +554,18 @@ async function submitReceipt() {
 
     const payload = { ...receipt, receipt_image_path };
 
-    showStatus("جاري إرسال الطلب للمراجعة...", "ok");
 
-    // Try few common arg styles
-    const res = await callAnyRpcWithArgVariants(RPC_CREATE_CANDIDATES, [
-      { payload },
-      { p_payload: payload },
-      { data: payload },
-      { p_data: payload },
-    ]);
+    showStatus(isManager ? "جاري إنشاء الطلب واعتماده..." : "جاري إرسال الطلب للمراجعة...", "ok");
 
-    if (res?.error) {
-      showStatus("فشل إرسال الطلب: " + res.error.message, "err");
+    const r = await supabase.rpc(RPC_CREATE_CANDIDATES[0], { p_data: payload });
+    if (r.error) {
+      showStatus("فشل إرسال الطلب: " + r.error.message, "err");
       return;
     }
 
     // extract id for user message
-    const ret = res.data;
+    const ret = r.data;
+
     const id =
       (typeof ret === "string" && ret) ||
       ret?.change_request_id ||
@@ -580,9 +573,19 @@ async function submitReceipt() {
       ret?.request_id ||
       null;
 
-    showStatus(id
-      ? `تم إرسال الطلب للمراجعة. رقم الطلب: ${id}`
-      : "تم إرسال الطلب للمراجعة.", "ok");
+
+    if (isManager && id) {
+      const ar = await supabase.rpc("approve_change_request", { p_id: id });
+      if (ar.error) {
+        showStatus(`تم إنشاء الطلب، لكن فشل الاعتماد: ${ar.error.message} (رقم الطلب: ${id})`, "err");
+      } else {
+        showStatus(`تم اعتماد الطلب. رقم الطلب: ${id}`, "ok");
+      }
+    } else {
+      showStatus(id
+        ? `تم إرسال الطلب للمراجعة. رقم الطلب: ${id}`
+        : "تم إرسال الطلب للمراجعة.", "ok");
+    }
 
     resetForm();
   } catch (e) {
@@ -856,14 +859,10 @@ async function runImport() {
         items,
       };
 
-      const res = await callAnyRpcWithArgVariants(RPC_CREATE_CANDIDATES, [
-        { payload },
-        { p_payload: payload },
-        { data: payload },
-        { p_data: payload },
-      ]);
 
-      if (res?.error) throw new Error(res.error.message);
+      const r = await supabase.rpc(RPC_CREATE_CANDIDATES[0], { p_data: payload });
+      if (r.error) throw new Error(r.error.message);
+
     }
 
     importProgress.textContent = `تم الاستيراد بنجاح: ${groupList.length} أذونات (جميعها قيد المراجعة).`;
@@ -1013,7 +1012,7 @@ $("#saveYarnBrand").addEventListener("click", async () => {
   } catch (e) {
     showStatus("تعذر تحميل القوائم من قاعدة البيانات: " + (e?.message || e), "err");
   }
-})();let isManager = false;
+})();
 
 async function loadIsManager() {
   try {
@@ -1021,5 +1020,4 @@ async function loadIsManager() {
     if (!r.error && typeof r.data === 'boolean') isManager = r.data;
   } catch (_) {}
 }
-
 
