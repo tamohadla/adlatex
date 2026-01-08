@@ -19,12 +19,12 @@ const T = {
 };
 
 // أسماء الـ RPC (نحاول أكثر من اسم لتقليل الأخطاء)
-const RPC_CREATE_CANDIDATES = [
-  "submit_yarn_purchase_request",
-  "submit_yarn_purchase_change_request",
-  "submit_yarn_purchase_create_request",
-  "request_yarn_purchase",
+const RPC_CREATE_CANDIDATES = ["submit_yarn_purchase_request"];
+const RPC_APPROVE_CANDIDATES = [
+  "confirm_change_request",
+  "approve_change_request",
 ];
+
 
 /* ====== Helpers ====== */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -158,10 +158,10 @@ let pendingBrandAddForItemEl = null;
 /* ====== Load masters ====== */
 async function loadMasters() {
   const [sup, fac, yt, yb] = await Promise.all([
-    supabase.from(T.suppliers).select("id,name").order("name"),
-    supabase.from(T.factories).select("id,name").order("name"),
-    supabase.from(T.yarnTypes).select("id,name").order("name"),
-    supabase.from(T.yarnBrands).select("id,name,yarn_type_id").order("name"),
+    supabase.from(T.suppliers).select("id,name").eq("is_active", true).order("name"),
+    supabase.from(T.factories).select("id,name").eq("is_active", true).order("name"),
+    supabase.from(T.yarnTypes).select("id,name").eq("is_active", true).order("name"),
+    supabase.from(T.yarnBrands).select("id,name,yarn_type_id").eq("is_active", true).order("name"),
   ]);
 
   if (sup.error) throw sup.error;
@@ -556,7 +556,7 @@ async function submitReceipt() {
 
     const payload = { ...receipt, receipt_image_path };
 
-    showStatus("جاري إرسال الطلب للمراجعة...", "ok");
+    showStatus(isManager ? "جاري إنشاء الطلب..." : "جاري إرسال الطلب للمراجعة...", "ok");
 
     // Try few common arg styles
     const res = await callAnyRpcWithArgVariants(RPC_CREATE_CANDIDATES, [
@@ -567,11 +567,7 @@ async function submitReceipt() {
     ]);
 
     if (res?.error) {
-      showStatus("فشل إرسال الطلب: " + res.error.message, "err");
-      return;
-    }
-
-    // extract id for user message
+      showStatus("فشل إرسال الطلب: " + res.error.messag// extract id for user message
     const ret = res.data;
     const id =
       (typeof ret === "string" && ret) ||
@@ -580,9 +576,27 @@ async function submitReceipt() {
       ret?.request_id ||
       null;
 
-    showStatus(id
-      ? `تم إرسال الطلب للمراجعة. رقم الطلب: ${id}`
-      : "تم إرسال الطلب للمراجعة.", "ok");
+    if (isManager && id) {
+      showStatus(`تم إنشاء الطلب. جاري الاعتماد... رقم الطلب: ${id}`, "ok");
+      const appr = await callAnyRpcWithArgVariants(RPC_APPROVE_CANDIDATES, [
+        { p_id: id },
+        { id },
+        { p_change_request_id: id },
+        { change_request_id: id },
+      ]);
+      if (appr?.error) {
+        // If auto-approve fails, leave it pending but show clear message
+        showStatus(`تم إنشاء الطلب لكنه ما زال بحاجة لاعتماد. رقم الطلب: ${id}`, "ok");
+      } else {
+        showStatus(`تم إنشاء الطلب واعتماده مباشرة. رقم الطلب: ${id}`, "ok");
+      }
+    } else {
+      showStatus(id
+        ? `تم إرسال الطلب للمراجعة. رقم الطلب: ${id}`
+        : "تم إرسال الطلب للمراجعة.", "ok");
+    }
+
+إرسال الطلب للمراجعة.", "ok");
 
     resetForm();
   } catch (e) {
