@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Greige Master Data | Adlatex</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./greige-master-data.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="brand-title">Adlatex</div>
+        <div class="brand-subtitle">Greige • Master Data</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <a class="btn btn-ghost" href="../app/index.html">الرئيسية</a>
+      <a class="btn btn-ghost" href="./greige-receipts.html">إدخال إذن خام</a>
+      <a class="btn btn-ghost" href="./greige-table.html">جدول الخام</a>
+      <button class="btn btn-danger" id="logoutBtn">خروج</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="card-header">
+        <h1>Greige Master Data</h1>
+        <div class="muted" id="roleInfo">—</div>
+      </div>
+
+      <div class="grid3">
+        <div class="panel">
+          <div class="panel-title row-between">
+            <h2 style="margin:0">Dye Houses</h2>
+            <button class="btn" id="addDyeHouseBtn">+ Add</button>
+          </div>
+          <div class="hint">المصبغة/المطبعة في نفس الجدول (dye_houses)</div>
+          <div id="dyeHousesList" class="list"></div>
+        </div>
+
+        <div class="panel" style="grid-column: span 2">
+          <div class="panel-title row-between">
+            <h2 style="margin:0">Greige Types</h2>
+            <button class="btn" id="addGreigeTypeBtn">+ Add</button>
+          </div>
+          <div class="hint">تعريف نوع الخام + تركيبة الخيوط (100%)</div>
+          <div id="greigeTypesList" class="list"></div>
+        </div>
+      </div>
+
+      <div id="msg" class="status" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Dye House -->
+  <div class="modal" id="dyeHouseModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="dyeHouseModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title" id="dyeHouseModalTitle">Dye House</div>
+        <button class="btn btn-ghost" data-close="dyeHouseModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Name</label>
+          <input id="dyeHouseName" type="text" placeholder="GemaTex" />
+        </div>
+        <label class="check"><input type="checkbox" id="dyeHouseActive" checked /> Active</label>
+        <div class="muted" id="dyeHouseModalMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="dyeHouseModal">Cancel</button>
+        <button class="btn btn-primary" id="saveDyeHouseBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Greige Type -->
+  <div class="modal" id="greigeTypeModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="greigeTypeModal"></div>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title" id="greigeTypeModalTitle">Greige Type</div>
+        <button class="btn btn-ghost" data-close="greigeTypeModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>Name</label>
+          <input id="greigeTypeName" type="text" placeholder="Single Jersey Cotton Lycra" />
+        </div>
+        <label class="check"><input type="checkbox" id="greigeTypeActive" checked /> Active</label>
+
+        <div class="divider"></div>
+        <div class="row-between">
+          <h3 style="margin:0">Composition (sum=100%)</h3>
+          <button class="btn" id="addCompRowBtn">+ Add Yarn</button>
+        </div>
+        <div id="compRows" class="comp-rows"></div>
+        <div class="sum-row">
+          <span>Total:</span>
+          <strong id="compSum">0%</strong>
+          <span id="compWarn" class="warn"></span>
+        </div>
+
+        <div class="muted" id="greigeTypeModalMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="greigeTypeModal">Cancel</button>
+        <button class="btn btn-primary" id="saveGreigeTypeBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./greige-master-data.js"></script>
+</body>
+</html>

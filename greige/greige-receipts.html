@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>إدخال أذون الخام | Adlatex</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./greige-receipts.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="brand-title">Adlatex</div>
+        <div class="brand-subtitle">Greige • إدخال أذون الخام</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <a class="btn btn-ghost" href="../app/index.html">الرئيسية</a>
+      <a class="btn btn-ghost" href="./greige-table.html">جدول الخام</a>
+      <a class="btn btn-ghost" href="./greige-master-data.html">Greige Master Data</a>
+      <button class="btn btn-danger" id="logoutBtn">خروج</button>
+    </div>
+  </div>
+
+  <main class="container">
+    <section class="card">
+      <div class="card-header">
+        <h1>إدخال إذن خام</h1>
+        <div class="muted" id="userInfo">—</div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label>رقم الإذن (Primary)</label>
+          <input id="receiptNo" type="text" placeholder="مثال: 1234" />
+        </div>
+
+        <div class="field">
+          <label>تاريخ الإذن</label>
+          <input id="receiptDate" type="date" />
+        </div>
+
+        <div class="field">
+          <label>المورد (مصنع الخام)</label>
+          <select id="factorySelect"></select>
+          <div class="hint">القائمة تأتي من Factories في قسم الخيط.</div>
+        </div>
+
+        <div class="field">
+          <label>المستلم (مصبغة/مطبعة)</label>
+          <div class="row">
+            <select id="dyeHouseSelect"></select>
+            <button class="btn btn-light" id="addDyeHouseBtn" type="button" title="إضافة مستلم">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="row-between">
+        <h2>بنود الإذن (Item-level)</h2>
+        <div class="row">
+          <button class="btn" id="addItemBtn" type="button">+ إضافة بند</button>
+          <button class="btn btn-ghost" id="openImportBtn" type="button">Import (A)</button>
+        </div>
+      </div>
+
+      <div id="itemsWrap" class="items-wrap"></div>
+
+      <div class="footer-actions">
+        <button class="btn btn-primary" id="submitBtn" type="button">حفظ الإذن</button>
+        <div class="status" id="statusBox" aria-live="polite"></div>
+      </div>
+
+      <div class="note">
+        <strong>v1 rule:</strong> بدون تقسيم (Split) — لكل مكوّن خيط اختيار ماركة/لوط واحد فقط.
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Add Dye House -->
+  <div class="modal" id="dyeHouseModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="dyeHouseModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">إضافة مستلم جديد (مصبغة/مطبعة)</div>
+        <button class="btn btn-ghost" data-close="dyeHouseModal" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>الاسم</label>
+          <input id="dyeHouseName" type="text" placeholder="مثال: جيما تكس" />
+        </div>
+        <div class="muted" id="dyeHouseMsg"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="dyeHouseModal" type="button">إلغاء</button>
+        <button class="btn btn-primary" id="saveDyeHouseBtn" type="button">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Define Greige Type -->
+  <div class="modal" id="greigeTypeModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="greigeTypeModal"></div>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">تعريف نوع خام جديد + تركيبته</div>
+        <button class="btn btn-ghost" data-close="greigeTypeModal" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label>اسم الخام</label>
+          <input id="greigeTypeName" type="text" placeholder="مثال: سنجل جيرسي قطن ليكرا" />
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row-between">
+          <h3 style="margin:0">تركيبة الخيوط (يجب = 100%)</h3>
+          <button class="btn" id="addCompRowBtn" type="button">+ إضافة خيط</button>
+        </div>
+        <div id="compRows" class="comp-rows"></div>
+        <div class="sum-row">
+          <span>الإجمالي:</span>
+          <strong id="compSum">0%</strong>
+          <span id="compWarn" class="warn"></span>
+        </div>
+
+        <div class="status" id="greigeTypeMsg" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="greigeTypeModal" type="button">إلغاء</button>
+        <button class="btn btn-primary" id="saveGreigeTypeBtn" type="button">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Import (Text) -->
+  <div class="modal" id="importModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close="importModal"></div>
+    <div class="modal-card modal-card-lg" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <div class="modal-title">Import (A) — سطر لكل بند</div>
+        <button class="btn btn-ghost" data-close="importModal" type="button">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="hint">الصيغة: <b>GreigeTypeName | QtyKg | Rolls | Specs</b></div>
+        <textarea id="importText" class="textarea" rows="10" placeholder="Single Jersey Cotton Lycra | 2000 | 100 | width 180 / gsm 180"></textarea>
+        <div class="status" id="importMsg" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close="importModal" type="button">إلغاء</button>
+        <button class="btn btn-primary" id="applyImportBtn" type="button">تطبيق</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./greige-receipts.js"></script>
+</body>
+</html>
